@@ -16,14 +16,18 @@ t     = (*self.tadata)[0,*]
 a     = (*self.tadata)[1,*]
 aunit = (*self.tadata)[2,*]
 ;recalculate data to correct units
-;================================================================================================================
+;=================================
 power = dblarr(n_elements(t))
-index = where(Aunit eq 'MBq',count)
-if count gt 0 then power(index) = 1
-index = where(Aunit eq 'GBq',count)
-if count gt 0 then power(index) = 1000
+index = where(strupcase(Aunit) eq 'BQ',count)
+if count gt 0 then power(index) = 1d-6
+index = where(strupcase(Aunit) eq 'KBQ',count)
+if count gt 0 then power(index) = 1d-3
+index = where(strupcase(Aunit) eq 'MBQ',count)
+if count gt 0 then power(index) = 1d
+index = where(strupcase(Aunit) eq 'GBQ',count)
+if count gt 0 then power(index) = 1000d
 a = a*power
-;===============
+;=================================
 
 
 mmin = value_locate(t,self.tlimit(0))
@@ -101,11 +105,16 @@ Aunit = (*self.taData)[2,*]
 ;recalculate data to correct units
 ;================================================================================================================
 power = dblarr(n_elements(t))
-index = where(Aunit eq 'MBq',count)
-if count gt 0 then power(index) = 1
-index = where(Aunit eq 'GBq',count)
-if count gt 0 then power(index) = 1000
+index = where(strupcase(Aunit) eq 'BQ',count)
+if count gt 0 then power(index) = 1d-6
+index = where(strupcase(Aunit) eq 'KBQ',count)
+if count gt 0 then power(index) = 1d-3
+index = where(strupcase(Aunit) eq 'MBQ',count)
+if count gt 0 then power(index) = 1d
+index = where(strupcase(Aunit) eq 'GBQ',count)
+if count gt 0 then power(index) = 1000d
 a = a*power
+
 ;=================================================================================================================
 
 if max(t) gt 3000 then begin
@@ -248,9 +257,7 @@ clock  = strsplit(mtx[1,*],':',/extract)
 clock = transpose(clock.toArray())
 
 
-day    = fix(date[0,*])
-month  = fix(date[1,*])
-year   = fix(date[2,*])
+
 hour   = fix(clock[0,*])
 minute = fix(clock[1,*])
 second = fix(clock[2,*])
@@ -258,8 +265,13 @@ second = fix(clock[2,*])
 tvector = julday(month,day,year,hour,minute,second)
 tvector = (tvector-tvector(0))*24.*60.  ;time in minutes!!
 
-data    = double(mtx(2,*))
-unit    = mtx(3,*)
+;if the decimal separator is "," change it to "."
+data = mtx[2,*]
+foreach element,data,i do begin
+  data[i] = strjoin(strsplit(element,',',/extract),'.')
+endforeach
+data = double(data)
+unit    = mtx[3,*]
 
 print,n_elements(mtx(*,0)),'antal'
 if n_elements(mtx(*,0)) eq 5 then begin  ;nuclide is specified in datafile
@@ -484,9 +496,13 @@ pro HL::abouts
 
 ;change log
 ;1.0 initial version around 2013 or 2014
-;1.1 added possibility to read different date formats. Only two formats added so far
+;1.1 added possibility to read different date formats. Only two formats added so far, new will be added upon request
+; 
+;1.2 bug fix for date format
+;    decimal separator "," is changed to "." when reading data. Both "," and "." should work
+;    note that only comma separator ";" works in this version
 
-str = ['Version 1.1','Author: Gustav Brolin, Skåne University Hospital']
+str = ['Version 1.2','Author: Gustav Brolin, Skane University Hospital']
 a = dialog_message(str,/information)
 end
 ;=============================================================================
