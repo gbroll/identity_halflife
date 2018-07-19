@@ -6,17 +6,14 @@ return,a0*exp(-alog(2)/t12*t)
 
 end
 ;=============================================================================
-pro HL::fit
-
-
-
-;extract desired data range
+function HL::MBQConvert
+;recalculate data to correct units ( = MBq)
 
 t     = (*self.tadata)[0,*]
 a     = (*self.tadata)[1,*]
 aunit = (*self.tadata)[2,*]
-;recalculate data to correct units
-;=================================
+
+
 power = dblarr(n_elements(t))
 index = where(strupcase(Aunit) eq 'BQ',count)
 if count gt 0 then power(index) = 1d-6
@@ -27,9 +24,17 @@ if count gt 0 then power(index) = 1d
 index = where(strupcase(Aunit) eq 'GBQ',count)
 if count gt 0 then power(index) = 1000d
 a = a*power
-;=================================
 
 
+return, a
+
+end
+;=============================================================================
+pro HL::fit
+
+a = call_method('MBQconvert',self) ;convert activity data to MBq
+
+t     = (*self.tadata)[0,*]
 mmin = value_locate(t,self.tlimit(0))
 case 1 of 
   mmin eq -1:mmin=0
@@ -46,6 +51,7 @@ endcase
 
 qt = t(mmin:mmax)
 qa = a(mmin:mmax)
+aunit = (*self.tadata)[2,*]
 qaunit = aunit(mmin:mmax)
 
 
@@ -103,19 +109,8 @@ a     = (*self.taData)[1,*]
 Aunit = (*self.taData)[2,*]
 
 ;recalculate data to correct units
-;================================================================================================================
-power = dblarr(n_elements(t))
-index = where(strupcase(Aunit) eq 'BQ',count)
-if count gt 0 then power(index) = 1d-6
-index = where(strupcase(Aunit) eq 'KBQ',count)
-if count gt 0 then power(index) = 1d-3
-index = where(strupcase(Aunit) eq 'MBQ',count)
-if count gt 0 then power(index) = 1d
-index = where(strupcase(Aunit) eq 'GBQ',count)
-if count gt 0 then power(index) = 1000d
-a = a*power
+a = call_method('MBQconvert',self) ;convert activity data to MBq
 
-;=================================================================================================================
 
 if max(t) gt 3000 then begin
   tt = t/60. & timeunit = 'h'
@@ -315,11 +310,7 @@ destroy:
 ;====================================================================================================================================================  
 endelse
 
-
-
-
 *self.taData=list(tvector,data,unit)
-
 
 ref = widget_info(self.tlb,find_by_uname = 'tMin')
 widget_control,ref,set_value = number_formatter(min(tvector),decimal=1)
@@ -331,10 +322,7 @@ self.tLimit(1) = max(tvector)
 
 ;reset data
 
-
-
 self.plot
-
 
 self.datafile = file
 self.path = newpath
@@ -495,14 +483,14 @@ end
 pro HL::abouts
 
 ;change log
-;1.0 initial version around 2013 or 2014
-;1.1 added possibility to read different date formats. Only two formats added so far, new will be added upon request
-; 
-;1.2 bug fix for date format
-;    decimal separator "," is changed to "." when reading data. Both "," and "." should work
-;    note that only comma separator ";" works in this version
+;1.0   initial version around 2013 or 2014
+;1.1   added possibility to read different date formats. Only two formats added so far, new will be added upon request
+;1.2   bug fix for date format
+;      decimal separator "," is changed to "." when reading data. Both "," and "." should work
+;      note that only comma separator ";" works in this version
+;1.2.1 new function MBQConvert that saves a few line of code
 
-str = ['Version 1.2','Author: Gustav Brolin, Skane University Hospital']
+str = ['Version 1.2.1','Author: Gustav Brolin, Skane University Hospital']
 a = dialog_message(str,/information)
 end
 ;=============================================================================
