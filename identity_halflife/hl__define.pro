@@ -30,7 +30,7 @@ return, a
 
 end
 ;=============================================================================
-pro HL::fit
+pro HL::fit, uname
 
 a = call_method('MBQconvert',self) ;convert activity data to MBq
 
@@ -60,7 +60,9 @@ widget_control,ref,set_value = number_formatter(t(mmin),decimal=1)
 ref = widget_info(self.tlb,find_by_uname = 'tMax')
 widget_control,ref,set_value = number_formatter(t(mmax),decimal=1)
 
-if self.nuclide ne '' then start_params = [qa(0),petRadionuclides(self.nuclide)] else start_params = [qa(0),alog(2)/(1./(qt(1)-qt(0))*alog(qa(0)/qa(1)))]
+
+;if self.nuclide ne '' then start_params = [qa(0),petRadionuclides(self.nuclide)] else start_params = [qa(0),alog(2)/(1./(qt(1)-qt(0))*alog(qa(0)/qa(1)))]
+start_params = [qa[0],alog(2)/(1./(qt[-1]-qt[0])*alog(qa[0]/qa[-1]))]
 
 print,start_params
 p = mpfitfun('monoExpfun', qt, qa, err,start_params)    ; Fit a function
@@ -72,6 +74,9 @@ self.eLimit = fix([mmin,mmax])
 print,self.monoExpParams
 
 self.plotData
+
+ref = widget_info(self.tlb,find_by_uname = 'PDFButton')
+widget_control,ref,sensitive = 1
 
 end
 ;=============================================================================
@@ -89,7 +94,7 @@ a = dialog_message('Input conversion error: tMax',/error)
 endelse
     
 
-self.Plot
+self.PlotData
 
 end
 ;=============================================================================
@@ -170,9 +175,6 @@ win.refresh
 end
 ;=============================================================================
 pro HL::ReadDataFile
-
-
-
 
 file = dialog_pickfile(path = self.path,/read,filter = '*.txt',get_path = newpath)
 
@@ -275,57 +277,73 @@ a = dialog_message('Error in input: Nuclide')
 endif else self.nuclide = mtx(4,0)
 
 endif else begin  ;small program to run if  nuclide is not specified in datafile
-;================================================================================================================================================= 
-res = petradionuclides('',full_name = nuclides,capintech = cformat)
-
-BASE      = WIDGET_BASE(XSIZE=300,YSIZE=200,/COLUMN,/BASE_ALIGN_CENTER)
-LABEL     = WIDGET_LABEL(BASE,VALUE = 'No nuclide information found in data file.',Font = 'CORBEL*16')
-LABEL     = WIDGET_LABEL(BASE,VALUE = 'Select Nuclide:',Font = 'CORBEL*16')
-DROPLIST  = WIDGET_DROPLIST(BASE,VALUE = [nuclides,'unknown'],Font =  'CORBEL*16',Ysize = 100,uvalue = 'DLIST')
-BUTTON    = WIDGET_BUTTON(BASE,VALUE = 'OK',uvalue = 'OK',FONT = 'CORBEL*16',Xsize=80)
-
-WIDGET_CONTROL,BASE,/REALIZE
-
-repeat begin  
-Event=Widget_Event(BASE,bad_ID = bad_ID)
-if bad_ID ne 0 then goto,destroy
-WIDGET_CONTROL, event.id, get_uvalue=ev
-
-case ev of 
-'OK':begin
-     index = widget_info(DROPLIST,/DROPLIST_SELECT)
-     if index le n_elements(cformat)-1 then self.nuclide = cformat(index) else self.nuclide = ''
-     end
-
-else: ;do nothing             
-endcase
-
-endrep until ev eq 'OK'
-
-WIDGET_CONTROL,BASE,/destroy
-destroy:
-
-;====================================================================================================================================================  
+  ;================================================================================================================================================= 
+  res = petradionuclides('',full_name = nuclides,capintech = cformat)
+  
+  BASE      = WIDGET_BASE(XSIZE=300,YSIZE=200,/COLUMN,/BASE_ALIGN_CENTER)
+  LABEL     = WIDGET_LABEL(BASE,VALUE = 'No nuclide information found in data file.',Font = 'CORBEL*16')
+  LABEL     = WIDGET_LABEL(BASE,VALUE = 'Select Nuclide:',Font = 'CORBEL*16')
+  DROPLIST  = WIDGET_DROPLIST(BASE,VALUE = [nuclides,'unknown'],Font =  'CORBEL*16',Ysize = 100,uvalue = 'DLIST')
+  BUTTON    = WIDGET_BUTTON(BASE,VALUE = 'OK',uvalue = 'OK',FONT = 'CORBEL*16',Xsize=80)
+  
+  WIDGET_CONTROL,BASE,/REALIZE
+  
+  repeat begin  
+  Event=Widget_Event(BASE,bad_ID = bad_ID)
+  if bad_ID ne 0 then goto,destroy
+  WIDGET_CONTROL, event.id, get_uvalue=ev
+  
+  case ev of 
+  'OK':begin
+       index = widget_info(DROPLIST,/DROPLIST_SELECT)
+       if index le n_elements(cformat)-1 then begin
+        self.nuclide = cformat[index]  
+       endif else begin
+        self.nuclide = ''
+       endelse
+       end
+  
+  else: ;do nothing             
+  endcase
+  
+  endrep until ev eq 'OK'
+  
+  WIDGET_CONTROL,BASE,/destroy
+  destroy:
+  
+  ;====================================================================================================================================================  
 endelse
 
-*self.taData=list(tvector,data,unit)
+call_method,'SelectRadioNuclide',self,self.nuclide
 
+
+;save time-activity data and reset monoexponential fit 
+*self.taData=list(tvector,data,unit)
+self.monoExpParams = fltarr(2)
+
+;widget related stuff
 ref = widget_info(self.tlb,find_by_uname = 'tMin')
-widget_control,ref,set_value = number_formatter(min(tvector),decimal=1)
+widget_control,ref,set_value = number_formatter(min(tvector),decimal=1),sensitive = 1
 ref = widget_info(self.tlb,find_by_uname = 'tMax')
-widget_control,ref,set_value = number_formatter(max(tvector),decimal=1)
+widget_control,ref,set_value = number_formatter(max(tvector),decimal=1),sensitive = 1
 self.tLimit(0) = min(tvector)
 self.tLimit(1) = max(tvector)
 
+ref = widget_info(self.tlb,find_by_uname = 'FitButton')
+widget_control,ref,sensitive = 1
+ref = widget_info(self.tlb,find_by_uname = 'PDFButton')
+widget_control,ref,sensitive = 0
 
-;reset data
 
+;plot data
 self.plotData
 
 self.datafile = file
 self.path = newpath
 self.measTime(0) = startDate
 self.measTime(1) = startTime
+
+
 endif
 
 end
@@ -392,7 +410,29 @@ endforeach
 
 end
 ;=============================================================================
-pro HL::createReport
+pro HL::SelectRadioNuclide, uName
+
+print,uName
+
+;reset all buttons
+foreach nuclide,*self.nuclideList do begin
+  ix = widget_info(self.tlb,find_by_uname = nuclide)
+  if nuclide eq uName then begin
+    val = 1
+    self.nuclide = nuclide
+  endif else begin
+    val = 0
+  endelse
+  widget_control,ix,set_button = val
+endforeach
+
+
+;redraw plot
+if n_elements(*self.taData) gt 0 then call_method,'plotData',self
+
+end
+;=============================================================================
+pro HL::createReport, uName
 
 ;the report is created in a graphical buffer not shown on screen
 ;The report is saved as a pdf file and a command is sent to open the report in acrobat reader. The location of acrobat reader is defined in a config file
@@ -443,6 +483,7 @@ report = window(dimensions = [1./sqrt(2)*height,height],location = [0,0],/buffer
 
 
 titletext = text(0.28,0.95,'Identity control for ' + petRadionuclides(self.nuclide,format = 'annotation'),font_size=14)
+txt       = text(0.75,0.05, ['IdentityHalflife','Program version: ' + self.programVersion], font_size = 7)
 
 rplot = plot(tt,a,symbol='o',ylog = 1,/current,linestyle=6,name = 'Measured',ytickunits = ytickunits,yrange = yrange,ystyle=0,ymajor = ymajor,position = [0.15,0.33,0.85,0.73],$
              font_size=fsz_figure,xrange = [-1,max(tt)]+1)
@@ -487,6 +528,7 @@ str = [str                                         ,$
       'Batch: ....................................' $
       ]
 
+
 tx = text(0.05,0.77,str,font_size=fsz_text,/clip)
 
 str = ['No. of data points: '+strcompress(n_elements(t),/remove_all),'No of data points considered: '+number_formatter((elim(1)-elim(0)+1),decimal = 0)]
@@ -506,10 +548,17 @@ str2 = [$
 
 tx = text(0.05,0.23,str2,font_size=fsz_text)
 
-if ((self.monoExpParams)[1] ge range(0) and (self.monoExpParams)[1] le range(1)) then res = 'Passed' else res = 'Failed'
-str = 'Result: '+res
+if ((self.monoExpParams)[1] ge range(0) and (self.monoExpParams)[1] le range(1)) then begin
+  res = 'Passed'  
+endif else begin
+  res = 'Failed'
+  fontColor = 'red'
+endelse
 
-if self.nuclide ne '' then tx = text(0.05,0.20,str,font_size=fsz_text)
+if self.nuclide ne '' then begin
+  tx = text(0.05,0.20,'Results: ',font_size=fsz_text)
+  tx = text(0.15,0.20,res,font_size=fsz_text,font_style = 1,font_color = fontColor)
+endif
 
 tx = text(0.05,0.10,'Signature: .......................................')
 
@@ -521,7 +570,7 @@ call_method,'SaveAndPrintReport',self
 
 end
 ;=============================================================================
-pro HL::SaveAndPrintReport
+pro HL::SaveAndPrintReport, uname
 
 self.reportFile = self.path + file_basename(self.datafile,'.txt')+'.pdf'
 
@@ -561,22 +610,32 @@ obj_destroy, self
 end
 ;=============================================================================
 ;=============================================================================
-pro HL::abouts
+pro HL::Abouts, CalledFromInit = CalledFromInit
+
+
 
 ;change log
 ;1.0   initial version around 2013 or 2014
-;1.1   added possibility to read different date formats. Only two formats added so far, new will be added upon request
-;1.2   fix for date format
+;1.1   2018-05 added possibility to read different date formats. Only two formats added so far, new will be added upon request
+;1.2   2018-05 fix for date format
 ;      decimal separator "," is changed to "." when reading data. Both "," and "." should work
 ;      note that only comma separator ";" works in this version
-;1.2.1 new function MBQConvert that saves a few line of code
-;1.3   2018-07-26  Report window is now buffered and saved as a pdf, with call do adobe reader to print the file
+;1.2.1 2018-07 new function MBQConvert that saves a few line of code
+;1.3   2018-07-26  Report window is now buffered and saved as a pdf, with call to adobe reader to print the file
 ;      Added config file to specify initial path to search in, default date format and path to adobe reader
 ;      minor changes to the report layout.
-;      fixed weird bug related to plotting in widget window that I can't begin to explain....using with a dummy plot including /noData keyword 
+;      fixed weird bug related to plotting in widget window that I can't begin to explain....fixed using a dummy plot including /noData keyword 
+;1.4   2018-09-20 changed initial estimate of halflife from true half-life to half-life estimated from difference between first and last data point in fitting range
+;      added possibility to change radionuclide to other than what's stated in the measurement data file (if user has measured with wrong setting on dose calibrator)
+;      added program version information in printed report
 
-str = ['Version 1.3','Author: Gustav Brolin, Radiation Physics, Skane University Hospital']
-a = dialog_message(str,/information)
+self.programVersion = '1.4'
+
+if ~keyword_set(CalledFromInit) then begin  
+  str = ['Version ' + self.programVersion,'Author: Gustav Brolin, Radiation Physics, Skane University Hospital']
+  a = dialog_message(str,/information)
+endif
+  
 end
 ;=============================================================================
 pro eventHandler,event
@@ -606,11 +665,15 @@ pro HL::createWidget
 Font  =  'CORBEL*16'
 Bsize=80
 
+
+
 self.tlb     = WIDGET_BASE(COLUMN = 2,title = 'Half-life estimation',mbar=mbar)
 
 MENU         = WIDGET_BUTTON(mbar,value = 'Settings',FONT = font)
   BUTTON       = WIDGET_BUTTON(MENU,value = 'Set Date Format',FONT = font,sensitive=1,/menu)
   foreach format, *self.dateFormatList do BUTTON1 = WIDGET_BUTTON(BUTTON,value = format,FONT = font,sensitive=1,/checked_menu,uvalue={object:self,method:'SetDateFormat'},uname = format)
+  BUTTON       = WIDGET_BUTTON(MENU,value = 'Select Radionuclide',FONT = font,sensitive=1,/menu)
+  foreach nuclide, *self.nuclideListFriendlyNames,ix do BUTTON1 = WIDGET_BUTTON(BUTTON, value = nuclide,FONT = font,sensitive=1,/checked_menu,uvalue={object:self,method:'SelectRadioNuclide'},uname = (*self.nuclideList)[ix] )
    
 MENU         = WIDGET_BUTTON(mbar,value = 'Help',FONT = font,/MENU)
   BUTTON       = WIDGET_BUTTON(MENU,value = 'Instructions',uvalue={object:self,method:'instruct'},FONT = font,sensitive=0) 
@@ -625,12 +688,12 @@ BASE2        = WIDGET_BASE(BASE,/ROW,/BASE_ALIGN_CENTER)
 BASE3        = WIDGET_BASE(BASE2,/COLUMN)
 BASE4        = WIDGET_BASE(BASE2,/COLUMN)
 LABEL        = WIDGET_LABEL(BASE3,VALUE = 'Min',FONT = Font,/ALIGN_CENTER)
-TEXT         = WIDGET_TEXT(BASE3,EDITABLE = 1,FONT = Font,/ALIGN_CENTER,Xsize=15,uname = 'tMin',uvalue = {object:self,method:'tLim'})
+TEXT         = WIDGET_TEXT(BASE3,EDITABLE = 1,FONT = Font,/ALIGN_CENTER,Xsize=15,uname = 'tMin',uvalue = {object:self,method:'tLim'},sensitive = 0)
 LABEL        = WIDGET_LABEL(BASE4,VALUE = 'Max',FONT = Font,/ALIGN_CENTER)
-TEXT         = WIDGET_TEXT(BASE4,EDITABLE = 1,FONT = Font,/ALIGN_CENTER,Xsize=15,uname = 'tMax',uvalue = {object:self,method:'tLim'})
+TEXT         = WIDGET_TEXT(BASE4,EDITABLE = 1,FONT = Font,/ALIGN_CENTER,Xsize=15,uname = 'tMax',uvalue = {object:self,method:'tLim'},sensitive = 0)
 LABEL        = WIDGET_LABEL(BASE,VALUE = '',FONT = Font,Xsize = Bsize,Ysize=100)
-BUTTON       = WIDGET_BUTTON(BASE,VALUE = 'Perform Fit',Font = Font,Xsize=Bsize,uvalue = {object:self,method:'fit'})
-BUTTON       = WIDGET_BUTTON(BASE,VALUE = 'Create PDF report',Font = Font,Xsize=Bsize,uvalue = {object:self,method:'createReport'})
+BUTTON       = WIDGET_BUTTON(BASE,VALUE = 'Perform Fit',Font = Font,Xsize=Bsize,uvalue = {object:self,method:'fit'},sensitive = 0,uname = 'FitButton')
+BUTTON       = WIDGET_BUTTON(BASE,VALUE = 'Create PDF report',Font = Font,Xsize=Bsize,uvalue = {object:self,method:'createReport'},sensitive = 0,uname = 'PDFButton')
 BUTTON       = WIDGET_BUTTON(BASE,VALUE = 'Quit',FONT = Font, XSIZE = Bsize,uvalue = {object:self,method:'quit'})
 
 WIN          = WIDGET_WINDOW(self.tlb,xsize=600,ysize=600,uname = 'pwin')
@@ -649,15 +712,22 @@ end
 function HL::init
 
 ;allocate pointer variables
-self.taData         = ptr_new(/ALLOCATE_HEAP)
-self.dateFormatList = ptr_new(/ALLOCATE_HEAP)
+self.taData                      = ptr_new(/ALLOCATE_HEAP)
+self.dateFormatList              = ptr_new(/ALLOCATE_HEAP)
+self.nuclideList                 = ptr_new(/ALLOCATE_HEAP)
+self.nuclideListFriendlyNames    = ptr_new(/ALLOCATE_HEAP)
 
-call_method, 'ReadConfig',self   ;read configParams
+call_method, 'ReadConfig',self                    ;read configParams
+call_method, 'Abouts', self, /calledFromInit      ;get program version
 
 *self.dateFormatList = [                 $
                         'dd/mm/yyyy'    ,$
                         'yyyy-mm-dd'     $
                        ]
+
+res = petradionuclides('',full_name = nuclides,capintec = cformat) & *self.nuclideList = cFormat & *self.nuclideListFriendlyNames = nuclides
+print,*self.nuclideList
+
 
 if max(*self.dateFormatList eq self.configDateFormat) gt 0 then self.dateFormat = self.configDateFormat else self.dateFormat = 'yyyy-mm-dd'
 ;a = dialog_message(self.configDataPath)
@@ -666,6 +736,8 @@ if self.configSavePdf eq '' then self.configSavePdf = 'yes'
 
 self.createWidget                                               ;create the widget
 call_method,'SetDateFormat',self,self.dateFormat                ;mark deafult date format in widget
+
+
   
 ;xmanager,'blä',self.tlb,/just_reg,/catch
 xmanager, 'blä',self.tlb,event_handler = 'eventHandler',/no_block
@@ -678,6 +750,7 @@ pro HL__define
 
 void = {    HL                                            ,$
             tlb:0L                                        ,$  ;top level widget base
+            programVersion: ''                            ,$  ;program version, set in HL::abouts()
             path:''                                       ,$  ;working path
             datafile:''                                   ,$  ;name of data file
             reportfile:''                                 ,$  ;name of reportfile
@@ -686,20 +759,21 @@ void = {    HL                                            ,$
             taData:ptr_new()                              ,$  ;time-activity data
             measTime:strarr(2)                            ,$  ;measurement start date(0) and time(1)
             nuclide:''                                    ,$  ;nuclide
+            nuclideList: ptr_new()                        ,$  ;list of nuclide (string arr) in library by capintec format
+            nuclideListFriendlyNames: ptr_new()           ,$  ;list of nuclide (string arr) in library by nice format
             plotw:obj_new()                               ,$  ;plot window
             reportw:obj_new()                             ,$  ;report window
             tLimit:dblarr(2)                              ,$  ;time and limit of exponential fit
             eLimit:intarr(2)                              ,$  ;element limit of exponential fit
             monoExpParams:fltarr(2)                       ,$  ;monoexponential fitting parameters
             
-            configDataPath:''                            ,$
-            configDateFormat:''                          ,$  ;
-            configPdfViewerPath:''                       ,$  ;full path to pdf viewer, used to show to report
-            configSavePdf: ''                             $
+            configDataPath:''                             ,$
+            configDateFormat:''                           ,$  ;
+            configPdfViewerPath:''                        ,$  ;full path to pdf viewer, used to show to report
+            configSavePdf: ''                              $
             
        }
         
         
-
 end
 ;=============================================================================
