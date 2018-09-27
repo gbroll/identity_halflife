@@ -141,8 +141,8 @@ plotw = plot(tt,a,/overplot,linestyle=6,name = 'Measured',symbol = 'o',sym_size 
 
 
 HL = petRadionuclides(self.nuclide)
-if HL gt 0 then t1 = text(0.1,0.87,'$\it T_{1/2} \rm(true) =$ ' + number_formatter(HL,decimal = 1) +' min') else $
-                t1 = text(0.1,0.87,'$\it T_{1/2} \rm(true) =$ ' + ' Error, nuclide missing')
+if HL gt 0 then t1 = text(0.1,0.87,'$\it T_{1/2} \rm(reference) =$ ' + number_formatter(HL,decimal = 1) +' min') else $
+                t1 = text(0.1,0.87,'$\it T_{1/2} \rm(referece) =$ ' + ' Error, nuclide missing')
 
 plotw.xtitle = 'Time ('+timeunit+')'
 plotw.ytitle = 'Activity (MBq)'
@@ -162,7 +162,7 @@ if total(self.monoExpParams) gt 0 then begin
   elim = self.eLimit
   fplot = plot(tt(elim(0):elim(1)),monoExpFun(t(elim(0):elim(1)),self.monoExpParams),/overplot,color='blue',thick=2,name = 'Fit')
   target = [target,fplot]
-  t2 = text(0.1,0.82,'$\it T_{1/2} \rm(fit) =$ ' + number_formatter((self.monoExpParams)[1],decimal = 1) +' min')
+  t2 = text(0.1,0.82,'$\it T_{1/2} \rm(measured) =$ ' + number_formatter((self.monoExpParams)[1],decimal = 1) +' min')
 
   
 endif
@@ -538,11 +538,11 @@ tx = text(0.65,0.74,str,font_size=8)
 
 HL    = petRadionuclides(self.nuclide,allowed_range = range)
 
-if HL gt 0 then str = '$\it T_{1/2} \rm(true) =$ ' + number_formatter(HL,decimal = 1) +' min' else $
-                str = '$\it T_{1/2} \rm(true) =$ ' + ' Error, nuclide missing'
+if HL gt 0 then str = '$\it T_{1/2} \rm(reference) =$ ' + number_formatter(HL,decimal = 1) +' min' else $
+                str = '$\it T_{1/2} \rm(reference) =$ ' + ' Error, nuclide missing'
 
 str2 = [$
-        '$\it T_{1/2} \rm(fit) =$ ' + number_formatter((self.monoExpParams)[1],decimal = 1) +' min (Allowed range: '+number_formatter(range(0),decimal = 1)+' - '+number_formatter(range(1),decimal = 1)+' min)' ,$
+        '$\it T_{1/2} \rm(measured) =$ ' + number_formatter((self.monoExpParams)[1],decimal = 1) +' min (Allowed range: '+number_formatter(range(0),decimal = 1)+' - '+number_formatter(range(1),decimal = 1)+' min)' ,$
         ' ',$       
         str]                                                                                                 
 
@@ -628,8 +628,9 @@ pro HL::Abouts, CalledFromInit = CalledFromInit
 ;1.4   2018-09-20 changed initial estimate of halflife from true half-life to half-life estimated from difference between first and last data point in fitting range
 ;      added possibility to change radionuclide to other than what's stated in the measurement data file (if user has measured with wrong setting on dose calibrator)
 ;      added program version information in printed report
+;1.4.1 changed wording in plot window and report from "true" to "reference" and from "fit" to "measured"
 
-self.programVersion = '1.4'
+self.programVersion = '1.4.1'
 
 if ~keyword_set(CalledFromInit) then begin  
   str = ['Version ' + self.programVersion,'Author: Gustav Brolin, Radiation Physics, Skane University Hospital']
